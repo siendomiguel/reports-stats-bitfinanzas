@@ -1,0 +1,30 @@
+{
+  "name": "reports",
+  "version": "1.1.0",
+  "description": "Sistema de reportes automatizado para Google Analytics 4",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "report": "node index_final.js",
+    "report:improved": "node index_improved.js",
+    "report:now": "node scheduler.js --now",
+    "scheduler": "node scheduler.js",
+    "test": "node index_final.js"
+  },
+  "dependencies": {
+    "@google-analytics/data": "^5.2.0",
+    "csv-writer": "^1.6.0",
+    "dotenv": "^16.6.1",
+    "node-cron": "^3.0.3"
+  },
+  "keywords": [
+    "google-analytics",
+    "ga4",
+    "reporting",
+    "automation",
+    "csv"
+  ],
+  "author": "Miguel Lares <siendomigueldev@gmail.com>",
+  "license": "MIT"
+}
