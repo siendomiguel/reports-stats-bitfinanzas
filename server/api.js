@@ -7,6 +7,7 @@ import path from 'path';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JSON_FILE = './data/consolidated-reports.json';
+const URLS_CONFIG_FILE = './config/urls.json';
 
 // === MIDDLEWARE ===
 app.use(cors());
@@ -51,6 +52,9 @@ app.get('/', (req, res) => {
       '/api/url/:urlPath': 'Datos de una URL específica',
       '/api/raw': 'Datos completos en JSON',
       '/api/health': 'Estado de la API',
+      '/api/config/urls [GET]': 'Obtener lista de URLs configuradas',
+      '/api/config/urls [POST]': 'Agregar nueva URL (body: { url: string })',
+      '/api/config/urls [DELETE]': 'Eliminar URL (body: { url: string })',
     },
     examples: {
       stats: `${req.protocol}://${req.get('host')}/api/stats`,
@@ -296,6 +300,127 @@ app.get('/api/raw', checkJSONFile, (req, res) => {
   }
 });
 
+// === ENDPOINTS DE CONFIGURACIÓN ===
+
+// Obtener lista de URLs configuradas
+app.get('/api/config/urls', (req, res) => {
+  try {
+    if (!fs.existsSync(URLS_CONFIG_FILE)) {
+      return res.status(404).json({
+        error: 'Archivo de configuración no encontrado',
+        file: URLS_CONFIG_FILE,
+      });
+    }
+    const config = JSON.parse(fs.readFileSync(URLS_CONFIG_FILE, 'utf8'));
+    res.json(config);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Agregar nueva URL a la configuración
+app.post('/api/config/urls', (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({
+        error: 'URL inválida',
+        message: 'Se requiere el campo "url" como string',
+      });
+    }
+
+    // Normalizar URL (asegurar que empiece y termine con /)
+    let normalizedUrl = url.trim();
+    if (!normalizedUrl.startsWith('/')) {
+      normalizedUrl = '/' + normalizedUrl;
+    }
+    if (!normalizedUrl.endsWith('/')) {
+      normalizedUrl = normalizedUrl + '/';
+    }
+
+    // Leer configuración actual
+    let config = { urls: [], lastUpdated: new Date().toISOString(), description: 'Lista de URLs para consultar en Google Analytics 4' };
+    if (fs.existsSync(URLS_CONFIG_FILE)) {
+      config = JSON.parse(fs.readFileSync(URLS_CONFIG_FILE, 'utf8'));
+    }
+
+    // Verificar si la URL ya existe
+    if (config.urls.includes(normalizedUrl)) {
+      return res.status(409).json({
+        error: 'URL duplicada',
+        message: 'Esta URL ya existe en la configuración',
+        url: normalizedUrl,
+      });
+    }
+
+    // Agregar nueva URL
+    config.urls.push(normalizedUrl);
+    config.lastUpdated = new Date().toISOString();
+
+    // Guardar configuración
+    fs.writeFileSync(URLS_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+
+    res.status(201).json({
+      success: true,
+      message: 'URL agregada exitosamente',
+      url: normalizedUrl,
+      total: config.urls.length,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Eliminar URL de la configuración
+app.delete('/api/config/urls', (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({
+        error: 'URL inválida',
+        message: 'Se requiere el campo "url" como string',
+      });
+    }
+
+    if (!fs.existsSync(URLS_CONFIG_FILE)) {
+      return res.status(404).json({
+        error: 'Archivo de configuración no encontrado',
+        file: URLS_CONFIG_FILE,
+      });
+    }
+
+    // Leer configuración actual
+    const config = JSON.parse(fs.readFileSync(URLS_CONFIG_FILE, 'utf8'));
+
+    // Buscar y eliminar URL
+    const index = config.urls.indexOf(url);
+    if (index === -1) {
+      return res.status(404).json({
+        error: 'URL no encontrada',
+        url: url,
+        available: config.urls,
+      });
+    }
+
+    config.urls.splice(index, 1);
+    config.lastUpdated = new Date().toISOString();
+
+    // Guardar configuración
+    fs.writeFileSync(URLS_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+
+    res.json({
+      success: true,
+      message: 'URL eliminada exitosamente',
+      url: url,
+      total: config.urls.length,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // === MANEJO DE ERRORES ===
 app.use((req, res) => {
   res.status(404).json({
@@ -308,6 +433,7 @@ app.use((req, res) => {
       '/api/url/:urlPath',
       '/api/raw',
       '/api/health',
+      '/api/config/urls [GET, POST, DELETE]',
     ],
   });
 });
