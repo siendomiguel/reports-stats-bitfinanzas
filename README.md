@@ -1,208 +1,341 @@
 # 📊 Sistema de Reportes GA4 Automatizado
 
-Sistema mejorado para extraer datos confiables de Google Analytics 4 y ejecutar reportes cada 6 horas automáticamente.
+Sistema completo para extraer datos de Google Analytics 4, ejecutar reportes programados, consolidar datos en JSON y visualizarlos mediante API REST y dashboard web.
 
-## 🚀 Mejoras Implementadas
+## 🚀 Características Principales
 
-### ✅ **Problemas Resueltos:**
+- ✅ **Reportes automáticos** cada 6 horas
+- ✅ **Consolidación incremental** CSV → JSON (rendimiento optimizado)
+- ✅ **API REST** para acceso a datos
+- ✅ **Dashboard web** con visualización en tiempo real
+- ✅ **Gestión dinámica de URLs** (JSON local o Google Sheets)
+- ✅ **Validación de datos** y detección de inconsistencias
+- ✅ **Logs con rotación automática**
 
-1. **Discrepancias de Datos Eliminadas:**
-
-   - Filtro `EXACT` en lugar de `CONTAINS` para URLs específicas
-   - Manejo correcto de zona horaria
-   - Cálculo ponderado de métricas promedio
-   - Consulta de datos de "ayer" para consistencia
-
-2. **Métricas Mejoradas:**
-
-   - ✅ Vistas de página (screenPageViews)
-   - ✅ Sesiones
-   - ✅ Usuarios activos
-   - ✅ Duración promedio de sesión (ponderada)
-   - ✅ Tasa de rebote (corregida: decimal → porcentaje)
-
-3. **Validación de Datos:**
-
-   - Detección automática de inconsistencias
-   - Logging detallado de todas las consultas
-   - Consultas de respaldo para URLs no encontradas
-   - Manejo robusto de errores
-
-4. **Automatización Confiable:**
-   - Ejecución cada 6 horas con `node-cron`
-   - Logs automáticos con rotación
-   - Manejo de señales del sistema
-   - Pausas entre consultas para evitar rate limiting
-
-## 📁 Estructura de Archivos
+## 📁 Estructura del Proyecto
 
 ```
-Reports/
-├── index.js                 # Script original (mantener como respaldo)
-├── index_improved.js        # ✨ Script mejorado con validaciones
-├── scheduler.js             # 🤖 Programador automático cada 6h
-├── package.json             # Dependencias actualizadas
-├── .env.example            # Ejemplo de configuración
-├── data/                   # 📊 Reportes CSV generados
-├── logs/                   # 📝 Logs de ejecución automática
-└── documents/
-    └── bitfinanzas_report.md
+reports/
+├── index_final.js           # Script principal de reportes
+├── scheduler.js             # Programador automático (cada 6h)
+├── server/
+│   ├── api.js              # API REST
+│   └── public/
+│       └── index.html      # Dashboard web
+├── lib/
+│   ├── csv-consolidator.js # Consolidación incremental CSV→JSON
+│   └── google-sheets.js    # Integración con Google Sheets
+├── scripts/
+│   ├── manage-urls.js      # Gestión de URLs (add/remove)
+│   └── json-viewer.js      # Visualizador de datos JSON
+├── config/
+│   ├── urls.json           # Configuración de URLs
+│   └── urls-cache.json     # Cache de Google Sheets
+├── data/
+│   ├── report_*.csv        # Reportes CSV (backup)
+│   └── consolidated-reports.json  # JSON consolidado
+└── logs/                   # Logs de ejecución (últimos 7)
 ```
 
-## ⚙️ Configuración
+## ⚙️ Instalación y Configuración
 
-### 1. Instalar Dependencias
+### 1. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 2. Configurar Variables de Entorno
+### 2. Configurar variables de entorno
 
 Copia `.env.example` a `.env` y configura:
 
 ```env
-GA4_PROPERTY_ID=tu_property_id_aqui
+# Google Analytics 4
+GA4_PROPERTY_ID=tu_property_id
 GA4_TIMEZONE=America/Mexico_City
-DAYS_BACK=1
-DEBUG_MODE=true
+GA4_CREDENTIALS_PATH=../../bitfinanzas/credentials/bitfinanzas-tv-f43f3f68a926.json
+
+# Google Sheets (opcional)
+GOOGLE_SHEET_ID=tu_sheet_id
+GOOGLE_SHEET_RANGE=URLs!A:A
+
+# API Server
+PORT=3000
 ```
 
-### 3. Verificar Credenciales
+### 3. Verificar credenciales
 
-Asegúrate de que el archivo de credenciales esté en la ruta correcta:
+Asegúrate de que las credenciales de Google estén en la ruta configurada.
 
-```
-../../bitfinanzas/credentials/bitfinanzas-tv-f43f3f68a926.json
-```
+## 🎯 Uso
 
-## 🚀 Uso
-
-### Ejecutar Reporte Una Vez (Recomendado para Pruebas)
+### Servidor Principal (TODO EN UNO)
 
 ```bash
+# Iniciar servidor completo (API + Dashboard + Scheduler automático)
+npm start
+
+# Iniciar servidor + ejecutar reporte inmediato
+npm start:now
+```
+
+Este comando inicia:
+- ✅ API REST en `http://localhost:3000`
+- ✅ Dashboard web en `http://localhost:3000`
+- ✅ Scheduler automático cada 6 horas (00:00, 06:00, 12:00, 18:00)
+
+### Comandos adicionales
+
+```bash
+# Generar reporte único manualmente (sin servidor)
 npm run report
 ```
 
-### Ejecutar Reporte Inmediatamente
+### Gestión de URLs
 
 ```bash
-npm run report:now
+# Ver URLs configuradas
+npm run urls list
+
+# Agregar nueva URL
+npm run urls add "/nueva-url/"
+
+# Eliminar URL
+npm run urls remove "/url-antigua/"
 ```
 
-### Iniciar Programador Automático (cada 6 horas)
+### Consolidación de Datos
 
 ```bash
-npm run scheduler
+# Consolidación incremental (automático en cada reporte)
+npm run consolidate
+
+# Consolidación completa (reconstruir desde CSV)
+npm run consolidate:full
 ```
 
-El programador se ejecutará en:
+### Visualización de Datos
 
-- **00:00** - Medianoche
-- **06:00** - Madrugada
-- **12:00** - Mediodía
-- **18:00** - Tarde
+```bash
+# Ver estadísticas en consola
+npm run json stats
+npm run json urls
+npm run json executions
+npm run json all
+```
 
-## 📊 Salida de Datos
+## 🌐 API REST
+
+El servidor se inicia automáticamente con `npm start`.
+
+Acceso: **http://localhost:3000**
+
+### Endpoints Disponibles
+
+| Endpoint | Descripción |
+|----------|-------------|
+| `GET /api/stats` | Estadísticas generales |
+| `GET /api/urls` | Resumen por URLs (ordenado por vistas) |
+| `GET /api/executions` | Historial de ejecuciones |
+| `GET /api/execution/:id` | Detalle de ejecución específica |
+| `GET /api/url/:urlPath` | Datos de una URL específica |
+| `GET /api/raw` | Datos completos en JSON |
+| `GET /api/health` | Estado de la API y scheduler |
+| `POST /api/trigger-report` | Ejecutar reporte manualmente |
+
+### Ejemplos de uso
+
+```bash
+# Estadísticas generales
+curl http://localhost:3000/api/stats
+
+# URLs más populares
+curl http://localhost:3000/api/urls
+
+# Datos de URL específica
+curl http://localhost:3000/api/url/bitcoin
+```
+
+## 📊 Dashboard Web
+
+Accede a **http://localhost:3000** para ver:
+
+- 🔗 **URLs** - Rendimiento por URL
+- 📋 **Ejecuciones** - Historial cronológico
+- 🔌 **API** - Documentación de endpoints
+- 🔄 **Actualización automática** cada 30 segundos
+
+## 📈 Salida de Datos
 
 ### CSV Generado
 
-Cada ejecución genera un archivo CSV con:
+Cada ejecución genera un CSV con:
 
-| Campo                     | Descripción               |
-| ------------------------- | ------------------------- |
-| **URL**                   | Ruta consultada           |
-| **Fecha de consulta**     | Fecha de los datos (ayer) |
-| **Vistas de página**      | Total de vistas           |
-| **Sesiones**              | Total de sesiones         |
-| **Usuarios activos**      | Usuarios únicos           |
-| **Duración promedio (s)** | Tiempo promedio de sesión |
-| **Tasa de rebote (%)**    | Porcentaje de rebote      |
-| **Datos encontrados**     | true/false                |
-| **Advertencias**          | Alertas de consistencia   |
+- URL consultada
+- Fecha de consulta
+- Vistas de página
+- Sesiones
+- Usuarios activos/nuevos
+- Sesiones comprometidas
+- Tasa de compromiso (%)
+- Duración promedio (s)
+- Tasa de rebote (%)
+- Desglose por fuente de tráfico
+- Advertencias e insights
 
-### Ejemplo de Salida en Consola
+### JSON Consolidado
 
+Estructura optimizada:
+
+```json
+{
+  "data": {
+    "2025-10-07_20-10": {
+      "metadata": {
+        "fechaEjecucion": "2025-10-07",
+        "horaEjecucion": "20:10",
+        "totalUrls": 4,
+        "urlsExitosas": 3
+      },
+      "urls": {
+        "/mi-url/": {
+          "metrics": {
+            "vistas": 189,
+            "sesiones": 228,
+            "usuariosActivos": 122,
+            "tasaCompromiso": 8.33,
+            "tasaRebote": 91.67
+          },
+          "desgloseTrafico": {...}
+        }
+      }
+    }
+  },
+  "metadata": {
+    "totalEjecuciones": 7,
+    "totalUrls": [...],
+    "ultimaActualizacion": "2025-10-07T20:10:00.000Z"
+  }
+}
 ```
-🔍 Consultando 1 URLs en GA4...
-📊 Property ID: 123456789
-🌍 Zona horaria configurada: America/Mexico_City
 
-📅 Consultando datos del 2025-10-05 para: /radar-economico-divisas-y-commodities-hoy-105/
-🔍 Respuesta raw para /radar-economico-divisas-y-commodities-hoy-105/: { rowCount: 1 }
-   Fila: vistas=45, sesiones=38, duración=125.5s, rebote=0.34
-🔍 Validando consistencia de datos para /radar-economico-divisas-y-commodities-hoy-105/:
-✅ Datos consistentes para /radar-economico-divisas-y-commodities-hoy-105/
-✅ Datos procesados para /radar-economico-divisas-y-commodities-hoy-105/: {...}
-✅ /radar-economico-divisas-y-commodities-hoy-105/ → 45 vistas, 38 sesiones
+## 🔧 Scripts Disponibles
 
-📁 Reporte generado: ./data/report_2025-10-06_15-30.csv
-📊 Resumen:
-   URLs consultadas: 1
-   Exitosas: 1
-   Con advertencias: 0
-   Errores: 0
-```
+| Comando | Descripción |
+|---------|-------------|
+| `npm start` | **Servidor completo** (API + Dashboard + Scheduler) |
+| `npm start:now` | Servidor + ejecutar reporte inmediato |
+| `npm run report` | Generar reporte único manualmente |
+| `npm run urls list` | Ver URLs configuradas |
+| `npm run urls add <url>` | Agregar URL |
+| `npm run urls remove <url>` | Eliminar URL |
+| `npm run consolidate` | Consolidación incremental |
+| `npm run consolidate:full` | Consolidación completa |
+| `npm run json stats` | Ver estadísticas en consola |
+| `npm run json urls` | Resumen por URL en consola |
+| `npm run json executions` | Historial de ejecuciones en consola |
 
-## 🔍 Troubleshooting
+## 🔍 Gestión de URLs
 
-### Si los datos siguen siendo diferentes a GA4:
+### Múltiples fuentes (orden de prioridad):
 
-1. **Verificar Zona Horaria:**
+1. **Google Sheets** (si está configurado)
+2. **Cache local** (backup de Sheets)
+3. **Archivo JSON local** (`config/urls.json`)
+4. **URLs por defecto** (emergencia)
 
-   ```bash
-   # En tu .env, usa la zona horaria correcta
-   GA4_TIMEZONE=America/Mexico_City  # Ajusta según tu ubicación
+### Configurar Google Sheets:
+
+1. Crea un Google Sheet
+2. Agrega URLs en columna A (una por fila)
+3. Obtén el Sheet ID de la URL
+4. Configura en `.env`:
+   ```env
+   GOOGLE_SHEET_ID=tu_sheet_id
+   GOOGLE_SHEET_RANGE=URLs!A:A
    ```
+5. Comparte el sheet con la cuenta de servicio
 
-2. **Verificar Fechas:**
+## 🚀 Optimizaciones
 
-   - El script consulta datos de "ayer" por consistencia
-   - GA4 puede tener retrasos de procesamiento de 24-48h
+### Consolidación Incremental
 
-3. **Verificar URLs:**
+- ✅ Solo procesa el nuevo CSV en cada reporte
+- ✅ No reconstruye todo el JSON
+- ✅ Rendimiento constante sin importar cantidad de reportes
+- ✅ CSV se mantienen como backup
 
-   - Usar rutas exactas: `/mi-pagina/` no `/mi-pagina`
-   - Verificar mayúsculas/minúsculas
-   - Revisar en los logs las "URLs similares encontradas"
+### Validación de Datos
 
-4. **Comparar con GA4:**
-   - En GA4, usar el rango de fechas **exacto**
-   - Verificar que esté en la misma zona horaria
-   - Usar las **mismas métricas**: Vistas de página, Sesiones, etc.
+- Detección de inconsistencias
+- Comparación de sesiones vs vistas
+- Verificación de tasas de rebote
+- Logging detallado
 
-### Logs de Debugging
+## 🔄 Flujo de Trabajo Completo
 
-Los logs automáticos se guardan en `./logs/` con información detallada:
+```bash
+# 1. Agregar URLs a monitorear
+npm run urls add "/nueva-url/"
 
-- Respuestas raw de GA4
-- Cálculos paso a paso
-- Advertencias de consistencia
-- Errores completos
+# 2. Iniciar servidor completo (TODO EN UNO)
+npm start
+# Esto inicia: API + Dashboard + Scheduler automático
 
-## 🛠️ Scripts Disponibles
+# 3. Acceder al dashboard
+# Abrir http://localhost:3000 en tu navegador
 
-| Comando              | Descripción                             |
-| -------------------- | --------------------------------------- |
-| `npm run report`     | Ejecutar reporte una vez (recomendado)  |
-| `npm run report:now` | Ejecutar reporte + mostrar programación |
-| `npm run scheduler`  | Iniciar programador automático          |
-| `npm start`          | Ejecutar script original (respaldo)     |
+# 4. Ejecutar reporte manualmente (opcional)
+curl -X POST http://localhost:3000/api/trigger-report
 
-## ⚠️ Notas Importantes
+# 5. Consultar estadísticas
+curl http://localhost:3000/api/stats
+```
 
-1. **Primer Uso:** Ejecuta `npm run report` primero para verificar que todo funcione
-2. **Rate Limiting:** El script incluye pausas entre consultas automáticamente
-3. **Logs:** Se mantienen los últimos 7 archivos de log automáticamente
-4. **Zona Horaria:** Crucial para consistencia con GA4
-5. **Detener Programador:** Usar `Ctrl+C` para detener el scheduler
+El servidor se queda ejecutando y genera reportes automáticamente cada 6 horas.
 
-## 🔄 Migración desde Script Original
+## ⚠️ Troubleshooting
 
-1. Mantén `index.js` como respaldo
-2. Usa `index_improved.js` para reportes manuales
-3. Usa `scheduler.js` para automatización
-4. Compara resultados inicialmente
+### Si los datos difieren de GA4:
+
+1. **Verificar zona horaria** en `.env`
+2. **Verificar fechas** - el script consulta datos de ayer
+3. **Verificar URLs** - usar rutas exactas con barras
+4. **Revisar logs** en `./logs/` para detalles
+
+### Si el JSON se corrompe:
+
+```bash
+# Reconstruir desde CSV backup
+rm ./data/consolidated-reports.json
+npm run consolidate:full
+```
+
+### Rate limiting de GA4:
+
+- El script incluye pausas automáticas entre consultas
+- Logs muestran advertencias si hay límites
+
+## 📝 Notas Importantes
+
+- **Primer uso**: Ejecuta `npm run report` primero
+- **Logs**: Se mantienen automáticamente los últimos 7
+- **CSV backup**: Nunca se eliminan, sirven de respaldo
+- **JSON**: Fuente principal optimizada
+- **Zona horaria**: Crucial para consistencia con GA4
+- **Detener scheduler**: `Ctrl+C`
+
+## 🎉 Sistema Completo
+
+Este sistema incluye:
+
+1. ✅ Extracción de datos GA4
+2. ✅ Reportes automáticos cada 6h
+3. ✅ Consolidación incremental optimizada
+4. ✅ API REST para integraciones
+5. ✅ Dashboard web visual
+6. ✅ Gestión dinámica de URLs
+7. ✅ Validación y logging completo
 
 ---
 

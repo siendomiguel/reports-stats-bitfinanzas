@@ -2,21 +2,91 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { createObjectCsvWriter } from 'csv-writer';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import { getGA4Config } from './lib/config.js';
 
 dotenv.config();
 
 // === CONFIGURACIÓN ===
-const PROPERTY_ID = process.env.GA4_PROPERTY_ID;
-const TIMEZONE = process.env.GA4_TIMEZONE || 'America/Mexico_City';
+const config = getGA4Config();
+const PROPERTY_ID = config.propertyId;
+const TIMEZONE = config.timezone;
 
-// Leer credenciales (mantener sintaxis original que funciona)
-const credentials = JSON.parse(
-  fs.readFileSync('../../bitfinanzas/credentials/bitfinanzas-tv-f43f3f68a926.json', 'utf8'),
-);
-const client = new BetaAnalyticsDataClient({ credentials });
+const client = new BetaAnalyticsDataClient({ credentials: config.credentials });
 
-// === LISTA DE URLS A CONSULTAR ===
-const urls = ['/radar-economico-divisas-y-commodities-hoy-105/'];
+// Importar funciones de Google Sheets
+import { loadUrlsFromGoogleSheets, saveUrlsCache, loadUrlsCache } from './lib/google-sheets.js';
+
+// Importar consolidador de CSV
+import { runIncrementalConsolidation } from './lib/csv-consolidator.js';
+
+// === FUNCIÓN PARA CARGAR URLS DESDE MÚLTIPLES FUENTES ===
+async function loadUrls() {
+  console.log('🔍 Cargando configuración de URLs...');
+
+  // 1. Intentar cargar desde Google Sheets (si está configurado)
+  try {
+    const sheetsUrls = await loadUrlsFromGoogleSheets();
+    if (sheetsUrls && sheetsUrls.length > 0) {
+      saveUrlsCache(sheetsUrls); // Guardar en cache
+      return sheetsUrls;
+    }
+  } catch (error) {
+    console.error('⚠️ Error con Google Sheets:', error.message);
+  }
+
+  // 2. Intentar cargar desde cache local
+  try {
+    const cacheUrls = loadUrlsCache();
+    if (cacheUrls && cacheUrls.length > 0) {
+      console.log('📂 Usando URLs desde cache local');
+      return cacheUrls;
+    }
+  } catch (error) {
+    console.error('⚠️ Error con cache local:', error.message);
+  }
+
+  // 3. Cargar desde archivo JSON local
+  try {
+    const configPath = './config/urls.json';
+
+    // Crear archivo de configuración por defecto si no existe
+    if (!fs.existsSync(configPath)) {
+      const defaultConfig = {
+        urls: [
+          '/radar-economico-divisas-y-commodities-hoy-105/',
+          '/donde-ve-valor-blackrock-ahora-que-la-renta-fija-se-enfria/',
+          '/dos-criptomonedas-de-menos-de-1-usd-para-comprar-en-octubre/',
+          '/estas-son-las-acciones-de-ia-recomendadas-por-goldman-sachs/',
+        ],
+        lastUpdated: new Date().toISOString(),
+        description: 'Lista de URLs para consultar en Google Analytics 4',
+      };
+
+      // Crear directorio config si no existe
+      if (!fs.existsSync('./config')) {
+        fs.mkdirSync('./config', { recursive: true });
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+      console.log('📁 Archivo de configuración creado:', configPath);
+    }
+
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log(`📋 Cargadas ${config.urls.length} URLs desde archivo local`);
+    console.log(`🕒 Última actualización: ${config.lastUpdated}`);
+
+    return config.urls;
+  } catch (error) {
+    console.error('❌ Error cargando configuración local:', error.message);
+    console.log('🔄 Usando URLs por defecto de emergencia...');
+
+    // URLs por defecto como último recurso
+    return [
+      '/radar-economico-divisas-y-commodities-hoy-105/',
+      '/donde-ve-valor-blackrock-ahora-que-la-renta-fija-se-enfria/',
+    ];
+  }
+}
 
 // === FUNCIÓN PARA GENERAR NOMBRE DE ARCHIVO CON FECHA Y HORA ===
 function getTimestampedFilename() {
@@ -290,6 +360,9 @@ async function getGA4DataForUrl(url) {
 
 async function main() {
   try {
+    // === CARGAR URLS DINÁMICAMENTE ===
+    const urls = await loadUrls();
+
     console.log(`🔍 Consultando ${urls.length} URLs en GA4...\n`);
     console.log(`📊 Property ID: ${PROPERTY_ID}`);
     console.log(`🌍 Zona horaria configurada: ${TIMEZONE}`);
@@ -380,6 +453,16 @@ async function main() {
     if (summary.successful === summary.totalUrls && summary.withWarnings === 0) {
       console.log(`\n🎉 ¡Todos los datos se extrajeron correctamente sin inconsistencias!`);
       console.log(`   Los datos deberían coincidir con tu panel de GA4.`);
+    }
+
+    // === CONSOLIDACIÓN INCREMENTAL A JSON ===
+    try {
+      console.log(`\n⚡ Agregando nuevo reporte al JSON consolidado...`);
+      await runIncrementalConsolidation(OUTPUT_PATH);
+      console.log(`✅ JSON consolidado actualizado: ./data/consolidated-reports.json`);
+    } catch (consolidationError) {
+      console.warn(`⚠️ Error en consolidación incremental: ${consolidationError.message}`);
+      console.log(`💡 Puedes ejecutar manualmente: npm run consolidate`);
     }
   } catch (error) {
     console.error('❌ Error general:', error.message);

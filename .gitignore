@@ -1,6 +1,34 @@
+# Environment variables
 .env
-.env.example
 
-/node_modules
-/documents
-/data
+# Dependencies
+node_modules/
+
+# Data y logs (generados en runtime)
+data/
+logs/
+*.csv
+*.log
+
+# Config cache (se regenera automáticamente)
+config/urls-cache.json
+
+# Credenciales (NUNCA subir)
+credentials/
+*.json
+!package.json
+!package-lock.json
+!config/urls.json
+
+# Documentación temporal
+documents/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

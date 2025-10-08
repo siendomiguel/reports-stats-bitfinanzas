@@ -5,17 +5,22 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --watch index.js",
+    "start:now": "node index.js --run-now",
     "report": "node index_final.js",
-    "report:improved": "node index_improved.js",
-    "report:now": "node scheduler.js --now",
-    "scheduler": "node scheduler.js",
-    "test": "node index_final.js"
+    "urls": "node scripts/manage-urls.js",
+    "consolidate": "node -e \"import('./lib/csv-consolidator.js').then(m => m.runIncrementalConsolidation())\"",
+    "consolidate:full": "node -e \"import('./lib/csv-consolidator.js').then(m => m.runConsolidation())\"",
+    "json": "node scripts/json-viewer.js"
   },
   "dependencies": {
     "@google-analytics/data": "^5.2.0",
+    "cors": "^2.8.5",
+    "csv-parse": "^6.1.0",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "googleapis": "^161.0.0",
     "node-cron": "^3.0.3"
   },
   "keywords": [

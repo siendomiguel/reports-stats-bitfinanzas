@@ -123,8 +123,13 @@ async function runReport() {
 }
 
 // === CONFIGURAR CRON JOB ===
+// Detectar zona horaria automáticamente
+const systemTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const timezone = process.env.GA4_TIMEZONE || systemTimezone;
+
 console.log('🤖 Configurando programador automático de reportes GA4...');
 console.log(`⏰ Programación: ${CRON_SCHEDULE} (cada 6 horas)`);
+console.log(`🌍 Zona horaria: ${timezone}`);
 console.log(`📁 Script: ${SCRIPT_PATH}`);
 console.log(`📝 Logs en: ${LOG_DIR}/`);
 
@@ -136,7 +141,7 @@ const task = cron.schedule(
   },
   {
     scheduled: true,
-    timezone: process.env.GA4_TIMEZONE || 'America/Mexico_City',
+    timezone: timezone,
   },
 );
 
@@ -161,21 +166,37 @@ console.log('\n📋 Próximas ejecuciones programadas:');
 // Mostrar las próximas 5 ejecuciones
 const nextExecutions = [];
 const now = new Date();
-for (let i = 0; i < 5; i++) {
-  const next = new Date(now);
-  next.setHours(Math.floor(now.getHours() / 6) * 6 + (i + 1) * 6, 0, 0, 0);
-  if (next <= now) {
-    next.setDate(next.getDate() + 1);
-  }
-  nextExecutions.push(next.toLocaleString());
-}
+const scheduleHours = [0, 6, 12, 18]; // Horas programadas: 00:00, 06:00, 12:00, 18:00
+const currentHour = now.getHours();
+const currentMinute = now.getMinutes();
 
+// Encontrar todas las próximas ejecuciones
+let executionsFound = 0;
+let currentDay = 0;
+
+while (executionsFound < 5) {
+  for (const hour of scheduleHours) {
+    const next = new Date(now);
+    next.setDate(now.getDate() + currentDay);
+    next.setHours(hour, 0, 0, 0);
+
+    // Solo agregar si es una fecha futura
+    if (next > now) {
+      nextExecutions.push(next.toLocaleString('es-CO', { timeZone: timezone }));
+      executionsFound++;
+      if (executionsFound >= 5) break;
+    }
+  }
+  currentDay++;
+}
 nextExecutions.forEach((time, index) => {
   console.log(`   ${index + 1}. ${time}`);
 });
 
-console.log('\n💡 Para ejecutar un reporte manualmente ahora, usa:');
-console.log('   npm run report:now');
+console.log('\n💡 Comandos disponibles:');
+console.log('   npm run report:now          - Ejecutar reporte una vez (sin scheduler)');
+console.log('   npm run scheduler:start     - Iniciar scheduler + ejecutar reporte inmediato');
+console.log('   node scheduler.js --run-now - Iniciar scheduler + ejecutar reporte inmediato');
 console.log('\n🛑 Para detener el programador: Ctrl+C');
 console.log('\n⏳ Esperando próxima ejecución programada...');
 
@@ -183,4 +204,11 @@ console.log('\n⏳ Esperando próxima ejecución programada...');
 if (process.argv.includes('--now')) {
   console.log('\n🚀 Ejecutando reporte inmediatamente...');
   await runReport();
+}
+
+// === OPCIÓN PARA EJECUTAR AL INICIAR EL SCHEDULER ===
+if (process.argv.includes('--run-now')) {
+  console.log('\n🚀 Ejecutando reporte inicial al arrancar el scheduler...');
+  await runReport();
+  console.log('\n⏳ Continuando con la programación automática...');
 }
